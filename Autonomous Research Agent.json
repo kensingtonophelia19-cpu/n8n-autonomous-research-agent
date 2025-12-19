@@ -1,0 +1,414 @@
+{
+  "name": "Autonomous Research Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "research-agent",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -192,
+        -48
+      ],
+      "id": "54329e00-fcec-4804-87ba-674c989df6ef",
+      "name": "Webhook",
+      "webhookId": "7863dd8c-83c7-4e5a-bef6-f1c143010398"
+    },
+    {
+      "parameters": {
+        "url": "https://www.googleapis.com/customsearch/v1",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $json.query.topic }}"
+            },
+            {
+              "name": "key",
+              "value": "AIzaSyCBALKv_GJ-xISpBbGbGL8LoLyQG7aQLd8"
+            },
+            {
+              "name": "cx",
+              "value": "=f297bdd6f54b14291"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        0,
+        -48
+      ],
+      "id": "73d48d96-9a0a-4dae-9b07-98ce3d1925f0",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the \"items\" array from the Google Search result\nconst googleResults = $input.first().json.items;\n\n// Transform them into separate items for n8n to process\nreturn googleResults.map(result => {\n  return {\n    json: result\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        -48
+      ],
+      "id": "e15b1a8d-a5e6-4cab-bfbd-275ce113a583",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        384,
+        -48
+      ],
+      "id": "2982873f-6b59-4240-b620-9d5c49205720",
+      "name": "Limit"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.link }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "html_raw"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        592,
+        -48
+      ],
+      "id": "be7fed50-3cb0-4def-8684-8d771d47c7cc",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "dataPropertyName": "html_raw",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "article_text",
+              "cssSelector": "p"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        -144,
+        176
+      ],
+      "id": "148c61c6-422c-4349-9907-02369cc0e052",
+      "name": "HTML"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "={\n  \"nodes\": [\n    {\n      \"parameters\": {\n        \"resource\": \"chat\",\n        \"model\": \"gpt-4o-mini\",\n        \"messages\": {\n          \"values\": [\n            {\n              \"role\": \"system\",\n              \"content\": \"You are a research assistant. Summarize the following text into 3 key bullet points.\"\n            },\n            {\n              \"role\": \"user\",\n              \"content\": \"={{ $json.article_text }}\"\n            }\n          ]\n        }\n      },\n      \"type\": \"n8n-nodes-base.openAi\",\n      \"typeVersion\": 1,\n      \"position\": [\n        1300,\n        0\n      ],\n      \"name\": \"AI Summarizer\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        64,
+        176
+      ],
+      "id": "d7e67b12-55bd-46ab-8699-7cf15334b637",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "8MA3wJ24hIZSHlow",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appRPvQRqHMWHGHD0",
+          "mode": "list",
+          "cachedResultName": "Autonomous Research Agent Database",
+          "cachedResultUrl": "https://airtable.com/appRPvQRqHMWHGHD0"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblqv8yWhysrvEfYq",
+          "mode": "list",
+          "cachedResultName": "Research Logs",
+          "cachedResultUrl": "https://airtable.com/appRPvQRqHMWHGHD0/tblqv8yWhysrvEfYq"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Topic": "AI Research",
+            "Source Link": "={{ $('Limit').item.json.link }}",
+            "Summary": "={{ $json.output[0].content[0].text }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Topic",
+              "displayName": "Topic",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Summary",
+              "displayName": "Summary",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Source Link",
+              "displayName": "Source Link",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Date Researched",
+              "displayName": "Date Researched",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "New",
+                  "value": "New"
+                },
+                {
+                  "name": "Reviewing",
+                  "value": "Reviewing"
+                },
+                {
+                  "name": "Done",
+                  "value": "Done"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Source Domain",
+              "displayName": "Source Domain",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Summary Sentiment",
+              "displayName": "Summary Sentiment",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Next Action Suggestion",
+              "displayName": "Next Action Suggestion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        416,
+        176
+      ],
+      "id": "d8ea0690-cde0-4468-b5a2-504e24ae74ed",
+      "name": "Create a record",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "w1HfV4lLmQ9LgNJT",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "Link of webhook:\nhttp://localhost:5678/webhook-test/research-agent?topic=Artificial%20Intelligence"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -176,
+        -240
+      ],
+      "typeVersion": 1,
+      "id": "9d05e527-47d8-4ea4-8463-7b9d9ea40364",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Create a record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "9f9a72be-f112-40c9-a03a-560fecf590ee",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "fed792e989815578bc3e9e0094747b0ae55aa3372d0e24f9f7f5c30a44b73fb0"
+  },
+  "id": "jBzujQsZtfp9Ozhy",
+  "tags": []
+}
