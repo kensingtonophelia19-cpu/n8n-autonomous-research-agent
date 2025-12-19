@@ -11,8 +11,7 @@ This intelligent agent automates the tedious process of market research. Instead
 * **HTML Extraction** (Web Scraping)
 
 ## 📸 Workflow
-![Workflow View](<img width="1295" height="635" alt="image" src="https://github.com/user-attachments/assets/98af8323-e3fb-4e47-abae-57afb70ae6b6" />
-)
+![Workflow View](Screenshot 2025-12-19 110517.png)
 
 ## 🚀 How it Works
 1.  **Trigger:** The workflow starts with a search keyword (e.g., "AI Trends 2025").
