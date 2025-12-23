@@ -43,7 +43,8 @@ Airtable (Content Calendar & Database)
 
 Slack (Notification & Approval)
 
-📸 Workflow (screenshot_Content Repurposing Agent.png)
+📸 Workflow
+![Workflow View](screenshot_Content%20Repurposing%20Agent.png)
 
 🚀 How it Works
 Trigger: The workflow activates when a new video is published or a URL is manually submitted.
