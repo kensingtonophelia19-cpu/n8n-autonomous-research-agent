@@ -1,0 +1,149 @@
+{
+  "name": "Content Repurposing Agent",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -640,
+        -64
+      ],
+      "id": "3dacdd17-bc51-4b73-9c17-8766addd0d07",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "url": "https://en.wikipedia.org/wiki/Main_Page",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "html_raw"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -432,
+        -64
+      ],
+      "id": "ebceaeff-4dd0-484f-9d2e-c60f6622ce15",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "dataPropertyName": "html_raw",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "content",
+              "cssSelector": "p"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        -224,
+        -64
+      ],
+      "id": "9280d7e9-cef4-4679-9ddc-447e78b63059",
+      "name": "HTML"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=You are a social media expert. Write a short, engaging LinkedIn post about this article. Use bullet points and hashtags.\n\nArticle Text:  {{ $json.content }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        -16,
+        -64
+      ],
+      "id": "325645e4-7526-40ff-82d6-4a6f4db7b0cc",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "8MA3wJ24hIZSHlow",
+          "name": "OpenAi account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "ee031817-f927-43e5-b605-bae60ff7ae63",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "fed792e989815578bc3e9e0094747b0ae55aa3372d0e24f9f7f5c30a44b73fb0"
+  },
+  "id": "DA5ysLDrNULApsO6",
+  "tags": []
+}
