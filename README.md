@@ -29,8 +29,6 @@ This intelligent agent automates the tedious process of market research. Instead
     * Airtable (Personal Access Token)
 4.  **Run:** Click execute and watch the database fill up!
 
-
-
 📋 Content Repurposing Agent Project Overview
 This creative automation solves the "create once, distribute everywhere" challenge. It takes a single piece of long-form content (such as a YouTube video transcript or blog post) and instantly transforms it into multiple social media formats. This ensures consistent output across platforms without the burnout of writing every post from scratch.
 
