@@ -1,7 +1,7 @@
 🕵️‍♂️ Autonomous AI Research Agent (n8n)
 An automated intelligence pipeline built in n8n that autonomously researches topics, scrapes web content, analyzes it using GPT-4, and builds a strategic knowledge base in Airtable.
 
-![Workflow View](Autonomous%20Research%20Agent%201.png)
+![Workflow View](images/Autonomous%20Research%20Agent%201.png)
 
 🚀 Features
 Autonomous Daily Trigger: Wakes up on a schedule to perform fresh research.
