@@ -1,0 +1,518 @@
+{
+  "name": "Autonomous Research Agent (Optimized)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        160,
+        0
+      ],
+      "id": "5f9fed4c-c8b4-431f-9361-608ce4b8d9e7",
+      "name": "Daily Schedule"
+    },
+    {
+      "parameters": {
+        "url": "https://www.googleapis.com/customsearch/v1",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "SpaceX Starship updates 2025"
+            },
+            {
+              "name": "cx",
+              "value": "f297bdd6f54b14291"
+            },
+            {
+              "name": "key",
+              "value": "YOUR_API_KEY"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        384,
+        0
+      ],
+      "id": "bab39011-a6f2-4627-938f-7ba6cc9a3d98",
+      "name": "Google Search"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appRPvQRqHMWHGHD0",
+          "mode": "list",
+          "cachedResultName": "Autonomous Research Agent Database",
+          "cachedResultUrl": "https://airtable.com/appRPvQRqHMWHGHD0"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblqv8yWhysrvEfYq",
+          "mode": "list",
+          "cachedResultName": "Research Logs",
+          "cachedResultUrl": "https://airtable.com/appRPvQRqHMWHGHD0/tblqv8yWhysrvEfYq"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        384,
+        208
+      ],
+      "id": "3cdb813c-f091-4514-baa4-3a49ec8858de",
+      "name": "Get Existing Records",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "w1HfV4lLmQ9LgNJT",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// --- 1. Get New URLs from Google (Fixed for \"Single Item\" Output) ---\nlet newLinks = [];\ntry {\n  // Get the first (and only) item from the Google Search node\n  const googleResponse = $('Google Search').first().json;\n  \n  // The actual results are nested inside the 'items' array\n  const results = googleResponse.items || [];\n  \n  // Extract the links from that array\n  newLinks = results.map(item => item.link).filter(link => link);\n  \n} catch (error) {\n  // If Google Search failed or has no 'items', return empty\n  newLinks = [];\n}\n\n// --- 2. Get Existing URLs from Airtable ---\nlet existingLinks = [];\ntry {\n  // Check if the node executed; use optional chaining just in case\n  const airtableData = $('Get Existing Records').all();\n  \n  existingLinks = airtableData.map(item => {\n    // robustly check for the link in different places\n    return item.json['Source Link'] || (item.json.fields && item.json.fields['Source Link']) || \"\";\n  });\n} catch (error) {\n  existingLinks = [];\n}\n\n// --- 3. The Logic: Filter out duplicates ---\n// Exclude links that are already in Airtable\nconst uniqueLinks = newLinks.filter(link => !existingLinks.includes(link));\n\n// --- 4. Return Output ---\nif (uniqueLinks.length === 0) {\n  // Stop the workflow if there's nothing new\n  return [];\n}\n\n// Format specifically for the Loop node\nreturn uniqueLinks.map(url => ({ json: { url: url } }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        96
+      ],
+      "id": "e6e619c0-a7cc-47fe-9256-2f164d2b51b4",
+      "name": "Filter Duplicates"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        848,
+        96
+      ],
+      "id": "e55160f0-dd3a-4c31-9c89-eac775f23a32",
+      "name": "Loop Over URLs"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            },
+            {
+              "name": "Accept",
+              "value": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+            },
+            {
+              "name": "Accept-Language",
+              "value": "en-US,en;q=0.5"
+            }
+          ]
+        },
+        "options": {
+          "redirect": {
+            "redirect": {}
+          },
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1072,
+        96
+      ],
+      "id": "8b72238f-212c-42a0-9f5d-0ca5bfc4ef29",
+      "name": "Scrape HTML",
+      "retryOnFail": false,
+      "notesInFlow": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "if ($input.item.error) {\n  return { json: { error: true } }; // Skip if scrape failed\n}\n\nconst html = $input.item.json.data || '';\n\n// Remove Scripts, Styles, and Tags to save AI tokens\nconst cleanText = html\n  .replace(/<script[^>]*>([\\S\\s]*?)<\\/script>/gmi, \"\")\n  .replace(/<style[^>]*>([\\S\\s]*?)<\\/style>/gmi, \"\")\n  .replace(/<[^>]+>/g, \"\\n\")\n  .replace(/\\n\\s*\\n/g, \"\\n\");\n\nreturn {\n  json: {\n    text_content: cleanText.substring(0, 6000), // Limit to 10k chars to save cost\n    url: $('Loop Over URLs').item.json.url\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        96
+      ],
+      "id": "1f34289b-fef2-46dc-bbed-256e2b553536",
+      "name": "Clean HTML"
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "model": "gpt-4o-mini",
+        "prompt": {
+          "messages": [
+            {
+              "content": "={{ $json.text_content }}"
+            },
+            {
+              "role": "system",
+              "content": "You are an expert Strategic Intelligence Analyst. Your job is to extract high-value insights from raw scraping data for an executive briefing.\n\n### INSTRUCTIONS:\n1. **Direct Analysis Only:** Never use phrases like \"The text discusses,\" \"The article mentions,\" or \"This document is about.\" Start directly with the facts.\n2. **Prioritize Data:** Focus on hard dates, specific product specifications, financial figures, and strategic shifts.\n3. **Ignore Fluff:** Discard marketing jargon, navigation menus, and \"contact us\" boilerplate.\n4. **Formatting:** Return the 'summary' as 3 distinct, high-impact bullet points.\n\n### JSON OUTPUT FORMAT (Strict):\nYou must output a valid JSON object. Do not wrap it in markdown code blocks.\n{\n  \"summary\": \"• Insight 1: [Specific fact/number]\\n• Insight 2: [Strategic implication]\\n• Insight 3: [Future outlook]\",\n  \"sentiment\": \"Positive/Neutral/Negative/Concern\",\n  \"relevance_score\": 1-10\n}\n\n### HANDLING ERRORS:\nIf the text is empty, blocked, or contains only a cookie consent warning, return exactly this JSON:\n{\n  \"summary\": \"BLOCK_DETECTED\",\n  \"sentiment\": \"Neutral\",\n  \"relevance_score\": 0\n}"
+            }
+          ]
+        },
+        "options": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [
+        1504,
+        96
+      ],
+      "id": "fda9db8f-ed1c-4e28-8bd0-f8f36892d2da",
+      "name": "AI Analyst",
+      "credentials": {
+        "openAiApi": {
+          "id": "8MA3wJ24hIZSHlow",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Get the AI Response\nconst responseJson = $input.item.json;\nconst aiText = responseJson.message ? responseJson.message.content : (responseJson.content || \"\");\n\n// 2. Parse the Summary & Sentiment\nlet parsedData = {};\ntry {\n  const cleanJson = aiText.replace(/```json/g, \"\").replace(/```/g, \"\");\n  parsedData = JSON.parse(cleanJson);\n} catch (e) {\n  parsedData = { \n    summary: aiText, \n    sentiment: \"Neutral\" \n  }; \n}\n\n// 3. ROBUST URL FINDER\nlet url = \"https://example.com\"; \ntry {\n   url = $('Loop Over URLs').item.json.url; \n} catch(e) {\n   url = \"URL Missing\";\n}\n\n// 4. TOPIC FIX\nconst topic = \"SpaceX Starship updates 2025\";\n\n// 5. NEXT ACTION LOGIC\nlet nextStep = \"Review manually\";\nconst sentiment = (parsedData.sentiment || \"\").toLowerCase();\n\nif (sentiment.includes(\"positive\")) {\n    nextStep = \"Share with team\";\n} else if (sentiment.includes(\"negative\") || sentiment.includes(\"concern\")) {\n    nextStep = \"Investigate further\";\n} else {\n    nextStep = \"Archive for later\";\n}\n\n// -----------------------------------------------------------\n// 6. THE JUNK FILTER (New Addition)\n// -----------------------------------------------------------\n// We check for common \"AI Refusal\" phrases.\nconst summaryCheck = (parsedData.summary || \"\").toLowerCase();\n\nif (summaryCheck.includes(\"please provide the text\") || \n    summaryCheck.includes(\"you haven't provided\") ||\n    summaryCheck.includes(\"i cannot analyze\") ||\n    summaryCheck.length < 20) {\n    \n    // RETURNING AN EMPTY ARRAY STOPS THE WORKFLOW FOR THIS ITEM\n    // The Airtable node will NOT run for this specific row.\n    return []; \n}\n\n// 7. RETURN VALID DATA\nreturn {\n  json: {\n    \"Topic\": topic,\n    \"Summary\": parsedData.summary || \"No summary provided\",\n    \"Source Link\": url,\n    \"Date Researched\": new Date().toISOString(),\n    \"Status\": \"Done\",\n    \"Summary Sentiment\": parsedData.sentiment || \"Neutral\",\n    \"Next Action\": nextStep\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1728,
+        96
+      ],
+      "id": "941dc537-730d-48ab-83e1-764a7bc275ad",
+      "name": "Parse AI Output"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appRPvQRqHMWHGHD0",
+          "mode": "list",
+          "cachedResultName": "Autonomous Research Agent Database",
+          "cachedResultUrl": "https://airtable.com/appRPvQRqHMWHGHD0"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblqv8yWhysrvEfYq",
+          "mode": "list",
+          "cachedResultName": "Research Logs",
+          "cachedResultUrl": "https://airtable.com/appRPvQRqHMWHGHD0/tblqv8yWhysrvEfYq"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Summary": "={{ $json.Summary }}",
+            "Source Link": "={{ $json[\"Source Link\"] }}",
+            "Summary Sentiment": "={{ $json[\"Summary Sentiment\"] }}",
+            "Status": "Done",
+            "Topic": "={{ $json.Topic }}",
+            "Date Researched": "={{ $json[\"Date Researched\"] }}",
+            "Next Action Suggestion": "={{ $json[\"Next Action\"] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Topic",
+              "displayName": "Topic",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Summary",
+              "displayName": "Summary",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Source Link",
+              "displayName": "Source Link",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Date Researched",
+              "displayName": "Date Researched",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "New",
+                  "value": "New"
+                },
+                {
+                  "name": "Reviewing",
+                  "value": "Reviewing"
+                },
+                {
+                  "name": "Done",
+                  "value": "Done"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Source Domain",
+              "displayName": "Source Domain",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Summary Sentiment",
+              "displayName": "Summary Sentiment",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Next Action Suggestion",
+              "displayName": "Next Action Suggestion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        1952,
+        96
+      ],
+      "id": "1a918a51-fb89-4b62-950e-6d7dc6da298f",
+      "name": "Save to Airtable",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "w1HfV4lLmQ9LgNJT",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 30,
+        "unit": "seconds"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        1952,
+        304
+      ],
+      "id": "3d43a8fb-e961-4018-95ab-d10e0e97bcc7",
+      "name": "Wait (Anti-Block)",
+      "webhookId": "30f650b9-763b-4f15-b2c8-582b75dc64d1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Daily Schedule": {
+      "main": [
+        [
+          {
+            "node": "Google Search",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Existing Records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Search": {
+      "main": [
+        [
+          {
+            "node": "Filter Duplicates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Duplicates": {
+      "main": [
+        [
+          {
+            "node": "Loop Over URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over URLs": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Scrape HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape HTML": {
+      "main": [
+        [
+          {
+            "node": "Clean HTML",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Clean HTML": {
+      "main": [
+        [
+          {
+            "node": "AI Analyst",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Analyst": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Output": {
+      "main": [
+        [
+          {
+            "node": "Save to Airtable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Airtable": {
+      "main": [
+        [
+          {
+            "node": "Wait (Anti-Block)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait (Anti-Block)": {
+      "main": [
+        [
+          {
+            "node": "Loop Over URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "134e9a75-142f-4b11-a127-f5e8db6d79af",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "fed792e989815578bc3e9e0094747b0ae55aa3372d0e24f9f7f5c30a44b73fb0"
+  },
+  "id": "jBzujQsZtfp9Ozhy",
+  "tags": []
+}
